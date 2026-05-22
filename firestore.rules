@@ -1,0 +1,182 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: uid, email, displayName, photoURL, role, isSuspended, createdAt
+    //
+    // Collection: products
+    // Fields: id, name, type, description, price, category, stock, rating, ratingCount, specs, model, refurbishedDate, condition, imageUrl, createdAt
+    //
+    // Collection: products/{productId}/ratings
+    // Fields: id, productId, userId, userName, rating, comment, createdAt
+    //
+    // Collection: negotiations
+    // Fields: id, productId, productName, userId, userName, initialPrice, currentOffer, status, lastMessage, updatedAt, createdAt
+    //
+    // Collection: orders
+    // Fields: id, userId, productId, productName, productImageUrl, price, status, paymentMethod, address, phoneNumber, createdAt
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "www.thefixer2000@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isNotSuspended() {
+      return isAuthenticated() && 
+        (!exists(/databases/$(database)/documents/users/$(request.auth.uid)) || 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isSuspended != true);
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.role in ['admin', 'user'];
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['name', 'type', 'price']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.type in ['gadget', 'refurbished', 'pouch'] &&
+             data.price is number && data.price >= 0;
+    }
+
+    function isValidRating(data) {
+      return data.keys().hasAll(['productId', 'userId', 'rating']) &&
+             data.productId is string &&
+             data.userId == request.auth.uid &&
+             data.rating is int && data.rating >= 1 && data.rating <= 5;
+    }
+
+    function isValidNegotiation(data) {
+      return data.keys().hasAll(['productId', 'userId', 'initialPrice', 'currentOffer', 'status']) &&
+             data.productId is string &&
+             data.userId is string &&
+             data.initialPrice is number &&
+             data.currentOffer is number &&
+             data.status in ['pending', 'accepted', 'rejected', 'countered', 'active', 'pending_approval'];
+    }
+
+    function isValidAuction(data) {
+      return data.keys().hasAll(['productId', 'basePrice', 'status']) &&
+             data.productId is string &&
+             data.basePrice is number &&
+             data.status in ['active', 'ended', 'pending_approval', 'rejected'];
+    }
+
+    function isValidBid(data) {
+      return data.keys().hasAll(['auctionId', 'userId', 'amount']) &&
+             data.auctionId is string &&
+             data.userId == request.auth.uid &&
+             data.amount is number;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['userId', 'productId', 'productName', 'price', 'status', 'paymentMethod', 'address', 'phoneNumber']) &&
+             data.userId == request.auth.uid &&
+             data.productId is string &&
+             data.productName is string &&
+             data.price is number &&
+             data.status in ['placed', 'preparing', 'shipped', 'delivered', 'cancelled'] &&
+             data.paymentMethod in ['card', 'cod'] &&
+             data.address is string && data.address.size() > 0 &&
+             data.phoneNumber is string && data.phoneNumber.size() > 0 &&
+             (!('brand' in data) || data.brand is string) &&
+             (!('model' in data) || data.model is string) &&
+             (!('paymentStatus' in data) || data.paymentStatus in ['pending', 'awaiting_payment', 'paid']) &&
+             (!('payfast_id' in data) || data.payfast_id is string);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
+      allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role && request.resource.data.isSuspended == resource.data.isSuspended);
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /ratings/{ratingId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isNotSuspended() && isValidRating(request.resource.data);
+      allow update, delete: if isAdmin() || (isAuthenticated() && request.auth.uid == resource.data.userId);
+    }
+
+    match /negotiations/{negotiationId} {
+      allow read: if isAdmin() || (isAuthenticated() && (
+        resource.data.status in ['active', 'pending_approval'] ||
+        request.auth.uid == resource.data.userId || 
+        request.auth.uid in resource.data.participantIds
+      ));
+      allow create: if isAuthenticated() && isNotSuspended() && isValidNegotiation(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || (
+        isAuthenticated() && isNotSuspended() &&
+        (
+          // Owner update
+          (request.auth.uid == resource.data.userId && request.resource.data.userId == resource.data.userId && request.resource.data.initialPrice == resource.data.initialPrice) ||
+          // Participant bid
+          (resource.data.status == 'active' && request.resource.data.status == 'active' && request.resource.data.currentOffer > resource.data.currentOffer)
+        )
+      );
+    }
+
+    match /auctions/{auctionId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidAuction(request.resource.data);
+      allow update: if isAdmin() || (
+        isAuthenticated() && isNotSuspended() &&
+        resource.data.status == 'active' &&
+        request.resource.data.status == 'active' &&
+        request.resource.data.currentHighestBid > resource.data.currentHighestBid &&
+        request.resource.data.currentHighestBidderId == request.auth.uid &&
+        request.resource.data.endTime > request.time
+      );
+
+      match /bids/{bidId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && isNotSuspended() && isValidBid(request.resource.data) && 
+                      get(/databases/$(database)/documents/auctions/$(auctionId)).data.status == 'active';
+      }
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isNotSuspended() && isValidOrder(request.resource.data);
+      allow update: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

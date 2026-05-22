@@ -1,0 +1,194 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and permissions",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "isSuspended": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Gadget or Refurbished Phone",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["gadget", "refurbished", "pouch"] },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "promotion": { "type": "string" },
+        "category": { "type": "string" },
+        "stock": { "type": "integer" },
+        "rating": { "type": "number" },
+        "ratingCount": { "type": "integer" },
+        "specs": { "type": "object" },
+        "model": { "type": "string" },
+        "refurbishedDate": { "type": "string" },
+        "condition": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "type", "price"]
+    },
+    "Rating": {
+      "title": "Rating",
+      "description": "Product rating and review",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rating": { "type": "integer" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "userId", "rating"]
+    },
+    "Negotiation": {
+      "title": "Negotiation",
+      "description": "Price negotiation for refurbished phones",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "initialPrice": { "type": "number" },
+        "currentOffer": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "lastMessage": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "userId", "initialPrice", "currentOffer", "status"]
+    },
+    "Auction": {
+      "title": "Auction",
+      "description": "Real-time auction for a product",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "basePrice": { "type": "number" },
+        "currentHighestBid": { "type": "number" },
+        "currentHighestBidderId": { "type": "string" },
+        "currentHighestBidderName": { "type": "string" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "ended", "pending_approval", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "basePrice", "status"]
+    },
+    "Bid": {
+      "title": "Bid",
+      "description": "A bid in an auction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "auctionId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "amount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["auctionId", "userId", "amount"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global application settings",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "about": { "type": "string" },
+        "quote": { "type": "string" },
+        "email": { "type": "string" },
+        "linkedin": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "warranty": { "type": "string" },
+        "qualifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "subtitle": { "type": "string" },
+              "icon": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer order for a product",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "productImageUrl": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["placed", "preparing", "shipped", "delivered", "cancelled"] },
+        "paymentMethod": { "type": "string", "enum": ["card", "cod"] },
+        "address": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "brand": { "type": "string" },
+        "model": { "type": "string" },
+        "paymentStatus": { "type": "string", "enum": ["pending", "awaiting_payment", "paid"] },
+        "payfast_id": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "productId", "productName", "price", "status", "paymentMethod", "address", "phoneNumber"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Product inventory"
+    },
+    "/products/{productId}/ratings/{ratingId}": {
+      "schema": "Rating",
+      "description": "Product reviews"
+    },
+    "/negotiations/{negotiationId}": {
+      "schema": "Negotiation",
+      "description": "Price negotiations"
+    },
+    "/auctions/{auctionId}": {
+      "schema": "Auction",
+      "description": "Active and past auctions"
+    },
+    "/auctions/{auctionId}/bids/{bidId}": {
+      "schema": "Bid",
+      "description": "Bids for a specific auction"
+    },
+    "/settings/{settingId}": {
+      "schema": "Settings",
+      "description": "Global settings like developer info"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer orders"
+    }
+  }
+}
