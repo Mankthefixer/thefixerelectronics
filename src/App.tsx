@@ -219,6 +219,20 @@ const Storefront: React.FC = () => {
         )}
       </main>
 
+      <footer className="bg-zinc-950 text-zinc-400 py-12 mt-20 border-t border-zinc-900">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="text-center md:text-left">
+            <span className="text-white font-black text-lg tracking-tight">Thefixer Electronics</span>
+            <p className="text-xs text-zinc-500 mt-1">© {new Date().getFullYear()} www.thefixer2000@gmail.com. All rights reserved.</p>
+          </div>
+          <div className="flex gap-6 text-sm font-bold">
+            <button onClick={() => { setView('shop'); setSelectedProduct(null); }} className="hover:text-white transition-colors cursor-pointer">Shop</button>
+            <button onClick={() => setView('about')} className="hover:text-white transition-colors cursor-pointer">About Developer</button>
+            <button onClick={() => setView('ratings')} className="hover:text-white transition-colors cursor-pointer">Reviews</button>
+          </div>
+        </div>
+      </footer>
+
       <AnimatePresence>
         {showAuth && (
           <AuthPage onClose={() => setShowAuth(false)} />
